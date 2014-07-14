@@ -333,7 +333,14 @@ function (angular, app, _, kbn, moment) {
 
       boolQuery = $scope.ejs.BoolQuery();
       _.each(queries,function(q) {
+	var old_query = q.query;
+	if (old_query && !isNaN(old_query)) {
+	  console.log('Treating query as a bugid');
+	  var bugid = q.query;
+	  q.query = '(_type:bug AND bugid:' + bugid + ') OR (_type:similarities AND (id1:' + bugid + ' OR id2:' + bugid + '))';
+	  }
         boolQuery = boolQuery.must(querySrv.toEjsObj(q));
+	q.query = old_query;
       });
 
       request = request.query(
