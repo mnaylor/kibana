@@ -333,7 +333,7 @@ function (angular, app, _, kbn, moment) {
 
       boolQuery = $scope.ejs.BoolQuery();
       _.each(queries,function(q) {
-        boolQuery = boolQuery.should(querySrv.toEjsObj(q));
+        boolQuery = boolQuery.must(querySrv.toEjsObj(q));
       });
 
       request = request.query(
