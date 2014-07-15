@@ -374,16 +374,6 @@ function (angular, app, _, kbn, moment) {
           $scope.current_fields = _.uniq($scope.current_fields);
           $scope.hits += results.hits.total;
 
-          // Sort the data
-          $scope.data = _.sortBy($scope.data, function(v){
-              return v._score;
-          });
-
-          // Reverse if needed
-          if($scope.panel.sort[1] === 'desc') {
-            $scope.data.reverse();
-          }
-
           // Keep only what we need for the set
           $scope.data = $scope.data.slice(0,$scope.panel.size * $scope.panel.pages);
 
