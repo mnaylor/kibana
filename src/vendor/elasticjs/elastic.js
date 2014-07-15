@@ -9005,6 +9005,25 @@
                                                           successcb, errorcb);
       },
 
+      doMlt: function(successcb, errorcb) {
+        // make sure the user has set a client
+        if (ejs.client == null) {
+          throw new Error("No Client Set");
+        }
+
+        if (index == null || type == null || id == null) {
+          throw new Error('Index, Type, and ID must be set');
+        }
+
+        // we don't need to convert the client params to a string
+        // on get requests, just create the url and pass the client
+        // params as the data
+        var url = '/' + index + '/' + type + '/' + id + '/_mlt';
+
+        return ejs.client.get(url, genClientParams(params, paramExcludes),
+                                                          successcb, errorcb);
+      },	
+
       /**
             <p>Stores a document in the given index and type.  If no id
             is set, one is created during indexing.</p>
