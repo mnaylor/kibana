@@ -1,6 +1,6 @@
 /** @scratch /panels/5
  *
- * include::panels/table.asciidoc[]
+ * include::panels/mlttable.asciidoc[]
  */
 
 /** @scratch /panels/mlttable/0
@@ -41,7 +41,7 @@ function (angular, app, _, kbn, moment) {
       editorTabs : [
         {
           title:'Paging',
-          src: 'app/panels/table/pagination.html'
+          src: 'app/panels/mlttable/pagination.html'
         },
         {
           title:'Queries',
@@ -57,78 +57,78 @@ function (angular, app, _, kbn, moment) {
 
     // Set and populate defaults
     var _d = {
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * === Parameters
        *
        * size:: The number of hits to show per page
        */
       size    : 100, // Per page
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * pages:: The number of pages available
        */
       pages   : 5,   // Pages available
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * offset:: The current page
        */
       offset  : 0,
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * sort:: An array describing the sort order of the table. For example [`@timestamp',`desc']
        */
       sort    : ['_score','desc'],
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * overflow:: The css overflow property. `min-height' (expand) or `auto' (scroll)
        */
       overflow: 'min-height',
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * fields:: the fields used a columns of the table, in an array.
        */
       fields  : [],
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * highlight:: The fields on which to highlight, in an array
        */
       highlight : [],
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * sortable:: Set sortable to false to disable sorting
        */
       sortable: true,
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * header:: Set to false to hide the table column names
        */
       header  : true,
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * paging:: Set to false to hide the paging controls of the table
        */
       paging  : true,
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * field_list:: Set to false to hide the list of fields. The user will be able to expand it,
        * but it will be hidden by default
        */
       field_list: true,
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * all_fields:: Set to true to show all fields in the mapping, not just the current fields in
        * the table.
        */
       all_fields: false,
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * trimFactor:: The trim factor is the length at which to truncate fields takinging into
        * consideration the number of columns in the table. For example, a trimFactor of 100, with 5
        * columns in the table, would trim each column at 20 character. The entirety of the field is
        * still available in the expanded view of the event.
        */
       trimFactor: 300,
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * localTime:: Set to true to adjust the timeField to the browser's local time
        */
       localTime: false,
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * timeField:: If localTime is set to true, this field will be adjusted to the browsers local time
        */
       timeField: '@timestamp',
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        * spyable:: Set to false to disable the inspect icon
        */
       spyable : true,
-      /** @scratch /panels/table/5
+      /** @scratch /panels/mlttable/5
        *
        * ==== Queries
        * queries object:: This object describes the queries to use on this panel.
@@ -274,7 +274,7 @@ function (angular, app, _, kbn, moment) {
 
     $scope.toggle_details = function(row) {
       row.kibana.details = row.kibana.details ? false : true;
-      row.kibana.view = row.kibana.view || 'table';
+      row.kibana.view = row.kibana.view || 'mlttable';
       //row.kibana.details = !row.kibana.details ? $scope.without_kibana(row) : false;
     };
 
@@ -306,7 +306,7 @@ function (angular, app, _, kbn, moment) {
       var
         _segment,
         request,
-        boolQuery,
+	document,
         queries,
         sort;
 
@@ -328,42 +328,11 @@ function (angular, app, _, kbn, moment) {
       _segment = _.isUndefined(segment) ? 0 : segment;
       $scope.segment = _segment;
 
-      request = $scope.ejs.Request().indices(dashboard.indices[_segment]);
+      var document = $scope.ejs.Document('mini_android', 'bug', 10);
+      //$scope.populate_modal(document);
 
-      $scope.panel.queries.ids = querySrv.idsByMode($scope.panel.queries);
-
-      queries = querySrv.getQueryObjs($scope.panel.queries.ids);
-
-      boolQuery = $scope.ejs.BoolQuery();
-      _.each(queries,function(q) {
-	var old_query = q.query;
-	if (old_query && !isNaN(old_query)) {
-	  console.log('Treating query as a bugid');
-	  $scope.bugid = q.query;
-	  q.query = '(_type:bug AND bugid:' + $scope.bugid + ') OR (_type:similarities AND (id1:' + $scope.bugid + ' OR id2:' + $scope.bugid + '))';
-	  }
-        boolQuery = boolQuery.must(querySrv.toEjsObj(q));
-	q.query = old_query;
-      });
-
-      request = request.query(
-        $scope.ejs.FilteredQuery(
-          boolQuery,
-          filterSrv.getBoolFilter(filterSrv.ids())
-        ))
-        .highlight(
-          $scope.ejs.Highlight($scope.panel.highlight)
-          .fragmentSize(2147483647) // Max size of a 32bit unsigned int
-          .preTags('@start-highlight@')
-          .postTags('@end-highlight@')
-        )
-        .size($scope.panel.size*$scope.panel.pages)
-        .sort(sort);
-
-      $scope.populate_modal(request);
-
-      // Populate scope when we have results
-      request.doSearch().then(function(results) {
+      document.doMlt().then(function(results) {
+        console.log(results);
         $scope.panelMeta.loading = false;
 
         if(_segment === 0) {
@@ -393,31 +362,8 @@ function (angular, app, _, kbn, moment) {
             // _source is kind of a lie here, never display it, only select values from it
             _h.kibana = {
               _source : _.extend(kbn.flatten_json(hit._source),_p),
-              _altsource : _.extend(kbn.flatten_json(hit._source),_p),
               highlight : kbn.flatten_json(hit.highlight||{})
             };
-
-            if (hit._type === 'similarities') {
-	      var source = hit._source;
-	      var matching_bugid = source.id1 == $scope.bugid? source.id2 : 
-		    source.id1;
-	      var request = request = $scope.ejs.Request()
-		    .indices(dashboard.indices[$scope.segment]);
-	      var termFilter = $scope.ejs.TermFilter('bugid', matching_bugid);
-
-	      request = request.filter(termFilter);
-	      request.doSearch().then(function(results) {
-
-	      // Check for error and abort if found
-              if(!(_.isUndefined(results.error))) {
-	        $scope.panel.error = $scope.parse_error(results.error);
-	        return;
-	      }
-	      _h.kibana._altsource = _.extend(
-		  kbn.flatten_json(results.hits.hits[0]._source));
-	      });
-	    }
-
 
             // Kind of cheating with the _.map here, but this is faster than kbn.get_all_fields
             $scope.current_fields = $scope.current_fields.concat(_.keys(_h.kibana._source));
@@ -430,11 +376,7 @@ function (angular, app, _, kbn, moment) {
 
           // Sort the data
           $scope.data = _.sortBy($scope.data, function(v){
-            if(!_.isUndefined(v.sort)) {
-              return v.sort[0];
-            } else {
               return v._score;
-            }
           });
 
           // Reverse if needed
@@ -462,7 +404,7 @@ function (angular, app, _, kbn, moment) {
     };
 
     $scope.populate_modal = function(request) {
-      $scope.inspector = angular.toJson(JSON.parse(request.toString()),true);
+      $scope.inspector = angular.toJson(request ,true);
     };
 
     $scope.without_kibana = function (row) {
