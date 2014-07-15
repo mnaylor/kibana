@@ -64,6 +64,7 @@ function (Settings) {
       'map',
       'goal',
       'table',
+      'mlttable',
       'filtering',
       'timepicker',
       'text',
