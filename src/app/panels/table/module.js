@@ -336,8 +336,8 @@ function (angular, app, _, kbn, moment) {
 	var old_query = q.query;
 	if (old_query && !isNaN(old_query)) {
 	  console.log('Treating query as a bugid');
-	  var bugid = q.query;
-	  q.query = '(_type:bug AND bugid:' + bugid + ') OR (_type:similarities AND (id1:' + bugid + ' OR id2:' + bugid + '))';
+	  $scope.bugid = q.query;
+	  q.query = '(_type:bug AND bugid:' + $scope.bugid + ') OR (_type:similarities AND (id1:' + $scope.bugid + ' OR id2:' + $scope.bugid + '))';
 	  }
         boolQuery = boolQuery.must(querySrv.toEjsObj(q));
 	q.query = old_query;
@@ -382,6 +382,7 @@ function (angular, app, _, kbn, moment) {
 
           // This is exceptionally expensive, especially on events with a large number of fields
           $scope.data = $scope.data.concat(_.map(results.hits.hits, function(hit) {
+
             var
               _h = _.clone(hit),
               _p = _.omit(hit,'_source','sort','_score');
@@ -389,8 +390,31 @@ function (angular, app, _, kbn, moment) {
             // _source is kind of a lie here, never display it, only select values from it
             _h.kibana = {
               _source : _.extend(kbn.flatten_json(hit._source),_p),
+              _altsource : _.extend(kbn.flatten_json(hit._source),_p),
               highlight : kbn.flatten_json(hit.highlight||{})
             };
+
+            if (hit._type === 'similarities') {
+	      var source = hit._source;
+	      var matching_bugid = source.id1 == $scope.bugid? source.id2 : 
+		    source.id1;
+	      var request = request = $scope.ejs.Request()
+		    .indices(dashboard.indices[$scope.segment]);
+	      var termFilter = $scope.ejs.TermFilter('bugid', matching_bugid);
+
+	      request = request.filter(termFilter);
+	      request.doSearch().then(function(results) {
+
+	      // Check for error and abort if found
+              if(!(_.isUndefined(results.error))) {
+	        $scope.panel.error = $scope.parse_error(results.error);
+	        return;
+	      }
+	      _h.kibana._altsource = _.extend(
+		  kbn.flatten_json(results.hits.hits[0]._source), _p);
+	      });
+	    }
+
 
             // Kind of cheating with the _.map here, but this is faster than kbn.get_all_fields
             $scope.current_fields = $scope.current_fields.concat(_.keys(_h.kibana._source));
