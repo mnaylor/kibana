@@ -305,9 +305,9 @@ function (angular, app, _, kbn, moment) {
     $scope.get_data = function(segment,query_id) {
       var
         _segment,
-        request,
 	document,
         queries,
+	bugid = 0,
         sort;
 
       $scope.panel.error =  false;
@@ -328,11 +328,18 @@ function (angular, app, _, kbn, moment) {
       _segment = _.isUndefined(segment) ? 0 : segment;
       $scope.segment = _segment;
 
-      var document = $scope.ejs.Document('mini_android', 'bug', 10);
+      queries = querySrv.getQueryObjs($scope.panel.queries.ids);
+      _.each(queries, function(q) {
+	if (q.query && !isNaN(q.query)) {
+	  bugid = q.query;
+	}
+      });
+
+      document = $scope.ejs.Document(dashboard.indices[0], 'bug', bugid);
+      console.log('performing more like this query on _id ' + bugid);
       //$scope.populate_modal(document);
 
       document.doMlt().then(function(results) {
-        console.log(results);
         $scope.panelMeta.loading = false;
 
         if(_segment === 0) {
