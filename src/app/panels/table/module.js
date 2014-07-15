@@ -411,7 +411,7 @@ function (angular, app, _, kbn, moment) {
 	        return;
 	      }
 	      _h.kibana._altsource = _.extend(
-		  kbn.flatten_json(results.hits.hits[0]._source), _p);
+		  kbn.flatten_json(results.hits.hits[0]._source));
 	      });
 	    }
 
