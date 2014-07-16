@@ -66,7 +66,7 @@ function (angular, $, kbn, _, config, moment, Modernizr) {
 
     // An elasticJS client to use
     var ejs = ejsResource(config.elasticsearch);
-
+    var index_from_url = $location.path().split('/')[4] || '_all';
     var gist_pattern = /(^\d{5,}$)|(^[a-z0-9]{10,}$)|(gist.github.com(\/*.*)\/[a-z0-9]{5,}\/*$)/;
 
     // Store a reference to this
@@ -158,7 +158,7 @@ function (angular, $, kbn, _, config, moment, Modernizr) {
             } else {
               // Option to not failover
               if(self.current.failover) {
-                self.indices = [self.current.index.default];
+                self.indices = [index_from_url];
               } else {
                 // Do not issue refresh if no indices match. This should be removed when panels
                 // properly understand when no indices are present
@@ -172,7 +172,7 @@ function (angular, $, kbn, _, config, moment, Modernizr) {
           });
         } else {
           if(self.current.failover) {
-            self.indices = [self.current.index.default];
+            self.indices = [index_from_url];
             querySrv.resolve().then(function(){$rootScope.$broadcast('refresh');});
           } else {
             alertSrv.set("No time filter",
@@ -181,7 +181,7 @@ function (angular, $, kbn, _, config, moment, Modernizr) {
           }
         }
       } else {
-        self.indices = [self.current.index.default];
+        self.indices = [index_from_url];
         querySrv.resolve().then(function(){$rootScope.$broadcast('refresh');});
       }
     };
@@ -202,7 +202,7 @@ function (angular, $, kbn, _, config, moment, Modernizr) {
 
       // If not using time based indices, use the default index
       if(dashboard.index.interval === 'none') {
-        self.indices = [dashboard.index.default];
+        self.indices = [index_from_url];
       }
 
       // Set the current dashboard
