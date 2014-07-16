@@ -65,6 +65,7 @@ function (Settings) {
       'goal',
       'table',
       'mlttable',
+      'simhistogram',
       'filtering',
       'timepicker',
       'text',
