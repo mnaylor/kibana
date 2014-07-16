@@ -352,7 +352,7 @@ function (angular, app, _, kbn, moment) {
 
         // Check for error and abort if found
         if(!(_.isUndefined(results.error))) {
-          $scope.panel.error = $scope.parse_error(results.error);
+          $scope.panel.error = $scope.parse_error('Document not found');
           return;
         }
 
