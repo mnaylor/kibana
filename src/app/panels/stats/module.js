@@ -120,8 +120,16 @@ define([
       // This could probably be changed to a BoolFilter
       boolQuery = $scope.ejs.BoolQuery();
       _.each(queries,function(q) {
-        boolQuery = boolQuery.should(querySrv.toEjsObj(q));
+	var old_query = q.query;
+	if (old_query && !isNaN(old_query)) {
+	  console.log('Treating query as a bugid in stats panel');
+	  $scope.bugid = q.query;
+	  q.query = '(_type:bug AND bugid:' + $scope.bugid + ') OR (_type:similarities AND (id1:' + $scope.bugid + ' OR id2:' + $scope.bugid + '))';
+	  }
+        boolQuery = boolQuery.must(querySrv.toEjsObj(q));
+	q.query = old_query;
       });
+
 
       request = request
         .facet($scope.ejs.StatisticalFacet('stats')
