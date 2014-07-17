@@ -73,6 +73,9 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
        * defined. Possible values: count, mean, max, min, total.
        */
       mode          : 'count',
+
+      size          : 10,
+
       /** @scratch /panels/histogram/3
        * time_field:: x-axis field. This must be defined as a date type in Elasticsearch.
        */
@@ -340,7 +343,7 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
 
       $scope.panel.queries.ids = querySrv.idsByMode($scope.panel.queries);
 
-      queries = querySrv.getQueryObjs($scope.panel.queries.ids);
+      queries = angular.copy(querySrv.getQueryObjs($scope.panel.queries.ids));
 
       // Build the similarity query
       boolQuery = $scope.ejs.BoolQuery();
@@ -361,16 +364,20 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
           boolQuery,
           filterSrv.getBoolFilter(filterSrv.ids())
         ))
+        .size($scope.panel.size)
         .sort('rep')
-        .fields(['id1', 'id2'])
-        .size(50);
+        .fields(['id1', 'id2']);
 
       // Populate scope when we have results
       results = request.doSearch();
 
       results.then(function(results) {
         if (!_.isUndefined(bugid)) {
-  	    // add a new query for each high ranking dupe bug
+          // reset request
+          
+          request = $scope.ejs.Request().indices(dashboard.indices[segment]);
+
+  	  // add a new query for each high ranking dupe bug
           _.each(results.hits.hits, function(h) {
             var id = h.fields.id1[0];
             if (bugid == id) {
@@ -414,7 +421,7 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
           }
           facet = facet.interval(_interval).facetFilter($scope.ejs.QueryFilter(query));
           request = request.facet(facet)
-            .size($scope.panel.annotate.enable ? $scope.panel.annotate.size : 0);
+            .size($scope.panel.annotate.enable ? $scope.panel.annotate.size : $scope.panel.size + 1);
         });
 
         if($scope.panel.annotate.enable) {
