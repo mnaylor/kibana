@@ -282,7 +282,7 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
 
     $scope.get_interval = function () {
       var interval = $scope.panel.interval,
-                      range;
+      range;
       if ($scope.panel.auto_int) {
         range = $scope.get_time_range();
         if (range) {
@@ -309,11 +309,14 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
      */
     $scope.get_data = function(data, segment, query_id) {
       var
-        _range,
-        _interval,
-        request,
-        queries,
-        results;
+      _range,
+      _interval,
+      request,
+      boolQuery,
+      bugid,
+      queries,
+      newQueries = [],
+      results;
 
       if (_.isUndefined(segment)) {
         segment = 0;
@@ -334,180 +337,226 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
 
       $scope.panelMeta.loading = true;
       request = $scope.ejs.Request().indices(dashboard.indices[segment]);
-      if (!$scope.panel.annotate.enable) {
-        request.searchType("count");
-      }
 
       $scope.panel.queries.ids = querySrv.idsByMode($scope.panel.queries);
 
       queries = querySrv.getQueryObjs($scope.panel.queries.ids);
 
-      // Build the query
-      _.each(queries, function(q) {
-        var query = $scope.ejs.FilteredQuery(
-          querySrv.toEjsObj(q),
-          filterSrv.getBoolFilter(filterSrv.ids())
-        );
-
-        var facet = $scope.ejs.DateHistogramFacet(q.id);
-
-        if($scope.panel.mode === 'count') {
-          facet = facet.field($scope.panel.time_field).global(true);
-        } else {
-          if(_.isNull($scope.panel.value_field)) {
-            $scope.panel.error = "In " + $scope.panel.mode + " mode a field must be specified";
-            return;
-          }
-          facet = facet.keyField($scope.panel.time_field).valueField($scope.panel.value_field).global(true);
+      // Build the similarity query
+      boolQuery = $scope.ejs.BoolQuery();
+      _.each(queries,function(q) {
+        var old_query = q.query;
+        if (old_query && !isNaN(old_query)) {
+          console.log('Treating query as a bugid');
+          bugid = q.query;
+          q.query = '_type:similarities AND (id1:' + bugid + 
+	    ' OR id2:' + bugid + ')';
+	  q.alias = old_query;
         }
-        facet = facet.interval(_interval).facetFilter($scope.ejs.QueryFilter(query));
-        request = request.facet(facet)
-          .size($scope.panel.annotate.enable ? $scope.panel.annotate.size : 0);
+        boolQuery = boolQuery.must(querySrv.toEjsObj(q));
       });
 
-      if($scope.panel.annotate.enable) {
-        var query = $scope.ejs.FilteredQuery(
-          $scope.ejs.QueryStringQuery($scope.panel.annotate.query || '*'),
-          filterSrv.getBoolFilter(filterSrv.idsByType('time'))
-        );
-        request = request.query(query);
-
-        // This is a hack proposed by @boaz to work around the fact that we can't get
-        // to field data values directly, and we need timestamps as normalized longs
-        request = request.sort([
-          $scope.ejs.Sort($scope.panel.annotate.sort[0]).order($scope.panel.annotate.sort[1]).ignoreUnmapped(true),
-          $scope.ejs.Sort($scope.panel.time_field).desc().ignoreUnmapped(true)
-        ]);
-      }
-
-      // Populate the inspector panel
-      $scope.populate_modal(request);
-
-      // Then run it
-      results = request.doSearch();
+      request = request.query(
+        $scope.ejs.FilteredQuery(
+          boolQuery,
+          filterSrv.getBoolFilter(filterSrv.ids())
+        ))
+        .fields(['id1', 'id2'])
+        .size(50);
 
       // Populate scope when we have results
-      return results.then(function(results) {
-        $scope.panelMeta.loading = false;
-        if(segment === 0) {
-          $scope.legend = [];
-          $scope.hits = 0;
-          data = [];
-          $scope.annotations = [];
-          query_id = $scope.query_id = new Date().getTime();
+      results = request.doSearch();
+
+      results.then(function(results) {
+        _.each(results.hits.hits, function(h) {
+          var id = h.fields.id1[0];
+          if (bugid == id) {
+            id = h.fields.id2[0];
+	  };
+	  // add a new query for each high ranking dupe bug
+          var newQuery = {
+            alias: id,
+            color: querySrv.colors[id % querySrv.colors.length],
+            enable: 'true',
+            pin: false,
+            id: id,
+            parent: id,
+            query: '_type: bug AND bugid: ' + id,
+            type: 'lucene' 
+	  };
+          queries.push(newQuery);
+	});
+
+	if (!$scope.panel.annotate.enable) {
+          request.searchType("count");
+	}
+
+	_.each(queries, function(q) {
+          var query = $scope.ejs.FilteredQuery(
+            querySrv.toEjsObj(q),
+            filterSrv.getBoolFilter(filterSrv.ids())
+          );
+
+          var facet = $scope.ejs.DateHistogramFacet(q.id);
+
+          if($scope.panel.mode === 'count') {
+            facet = facet.field($scope.panel.time_field).global(true);
+          } else {
+            if(_.isNull($scope.panel.value_field)) {
+              $scope.panel.error = "In " + $scope.panel.mode + " mode a field must be specified";
+              return;
+            }
+            facet = facet.keyField($scope.panel.time_field).valueField($scope.panel.value_field).global(true);
+          }
+          facet = facet.interval(_interval).facetFilter($scope.ejs.QueryFilter(query));
+          request = request.facet(facet)
+            .size($scope.panel.annotate.enable ? $scope.panel.annotate.size : 0);
+        });
+
+        if($scope.panel.annotate.enable) {
+          var query = $scope.ejs.FilteredQuery(
+            $scope.ejs.QueryStringQuery($scope.panel.annotate.query || '*'),
+            filterSrv.getBoolFilter(filterSrv.idsByType('time'))
+          );
+          request = request.query(query);
+
+          // This is a hack proposed by @boaz to work around the fact that we can't get
+          // to field data values directly, and we need timestamps as normalized longs
+          request = request.sort([
+            $scope.ejs.Sort($scope.panel.annotate.sort[0]).order($scope.panel.annotate.sort[1]).ignoreUnmapped(true),
+            $scope.ejs.Sort($scope.panel.time_field).desc().ignoreUnmapped(true)
+          ]);
         }
 
-        // Check for error and abort if found
-        if(!(_.isUndefined(results.error))) {
-          $scope.panel.error = $scope.parse_error(results.error);
-        }
-        // Make sure we're still on the same query/queries
-        else if($scope.query_id === query_id) {
+        // Populate the inspector panel
+        $scope.populate_modal(request);
 
-          var i = 0,
+        // Then run it
+        results = request.doSearch();
+
+        // Populate scope when we have results
+        return results.then(function(results) {
+          $scope.panelMeta.loading = false;
+          if(segment === 0) {
+            $scope.legend = [];
+            $scope.hits = 0;
+            data = [];
+            $scope.annotations = [];
+            query_id = $scope.query_id = new Date().getTime();
+          }
+
+          // Check for error and abort if found
+          if(!(_.isUndefined(results.error))) {
+            $scope.panel.error = $scope.parse_error(results.error);
+          }
+          // Make sure we're still on the same query/queries
+          else if($scope.query_id === query_id) {
+
+            var i = 0,
             time_series,
             hits,
             counters; // Stores the bucketed hit counts.
 
-          _.each(queries, function(q) {
-            var query_results = results.facets[q.id];
-            // we need to initialize the data variable on the first run,
-            // and when we are working on the first segment of the data.
-            if(_.isUndefined(data[i]) || segment === 0) {
-              var tsOpts = {
-                interval: _interval,
-                start_date: _range && _range.from,
-                end_date: _range && _range.to,
-                fill_style: $scope.panel.derivative ? 'null' : $scope.panel.zerofill ? 'minimal' : 'no'
-              };
-              time_series = new timeSeries.ZeroFilled(tsOpts);
-              hits = 0;
-              counters = {};
-            } else {
-              time_series = data[i].time_series;
-              hits = data[i].hits;
-              counters = data[i].counters;
-            }
-
-            // push each entry into the time series, while incrementing counters
-            _.each(query_results.entries, function(entry) {
-              var value;
-
-              hits += entry.count; // The series level hits counter
-              $scope.hits += entry.count; // Entire dataset level hits counter
-              counters[entry.time] = (counters[entry.time] || 0) + entry.count;
-
-              if($scope.panel.mode === 'count') {
-                value = (time_series._data[entry.time] || 0) + entry.count;
-              } else if ($scope.panel.mode === 'mean') {
-                // Compute the ongoing mean by
-                // multiplying the existing mean by the existing hits
-                // plus the new mean multiplied by the new hits
-                // divided by the total hits
-                value = (((time_series._data[entry.time] || 0)*(counters[entry.time]-entry.count)) +
-                  entry.mean*entry.count)/(counters[entry.time]);
-              } else if ($scope.panel.mode === 'min'){
-                if(_.isUndefined(time_series._data[entry.time])) {
-                  value = entry.min;
-                } else {
-                  value = time_series._data[entry.time] < entry.min ? time_series._data[entry.time] : entry.min;
-                }
-              } else if ($scope.panel.mode === 'max'){
-                if(_.isUndefined(time_series._data[entry.time])) {
-                  value = entry.max;
-                } else {
-                  value = time_series._data[entry.time] > entry.max ? time_series._data[entry.time] : entry.max;
-                }
-              } else if ($scope.panel.mode === 'total'){
-                value = (time_series._data[entry.time] || 0) + entry.total;
+            _.each(queries, function(q) {
+              var query_results = results.facets[q.id];
+              // we need to initialize the data variable on the first run,
+              // and when we are working on the first segment of the data.
+              if(_.isUndefined(data[i]) || segment === 0) {
+                var tsOpts = {
+                  interval: _interval,
+                  start_date: _range && _range.from,
+                  end_date: _range && _range.to,
+                  fill_style: $scope.panel.derivative ? 'null' : $scope.panel.zerofill ? 'minimal' : 'no'
+                };
+                time_series = new timeSeries.ZeroFilled(tsOpts);
+                hits = 0;
+                counters = {};
+              } else {
+                time_series = data[i].time_series;
+                hits = data[i].hits;
+                counters = data[i].counters;
               }
-              time_series.addValue(entry.time, value);
-            });
 
-            $scope.legend[i] = {query:q,hits:hits};
+              // push each entry into the time series, while incrementing counters
+              _.each(query_results.entries, function(entry) {
+                var value;
 
-            data[i] = {
-              info: q,
-              time_series: time_series,
-              hits: hits,
-              counters: counters
-            };
+                hits += entry.count; // The series level hits counter
+                $scope.hits += entry.count; // Entire dataset level hits counter
+                counters[entry.time] = (counters[entry.time] || 0) + entry.count;
 
-            i++;
-          });
+                if($scope.panel.mode === 'count') {
+                  value = (time_series._data[entry.time] || 0) + entry.count;
+                } else if ($scope.panel.mode === 'mean') {
+                  // Compute the ongoing mean by
+                  // multiplying the existing mean by the existing hits
+                  // plus the new mean multiplied by the new hits
+                  // divided by the total hits
+                  value = (((time_series._data[entry.time] || 0)*(counters[entry.time]-entry.count)) +
+                           entry.mean*entry.count)/(counters[entry.time]);
+                } else if ($scope.panel.mode === 'min'){
+                  if(_.isUndefined(time_series._data[entry.time])) {
+                    value = entry.min;
+                  } else {
+                    value = time_series._data[entry.time] < entry.min ? time_series._data[entry.time] : entry.min;
+                  }
+                } else if ($scope.panel.mode === 'max'){
+                  if(_.isUndefined(time_series._data[entry.time])) {
+                    value = entry.max;
+                  } else {
+                    value = time_series._data[entry.time] > entry.max ? time_series._data[entry.time] : entry.max;
+                  }
+                } else if ($scope.panel.mode === 'total'){
+                  value = (time_series._data[entry.time] || 0) + entry.total;
+                }
+                time_series.addValue(entry.time, value);
+              });
 
-          if($scope.panel.annotate.enable) {
-            $scope.annotations = $scope.annotations.concat(_.map(results.hits.hits, function(hit) {
-              var _p = _.omit(hit,'_source','sort','_score');
-              var _h = _.extend(kbn.flatten_json(hit._source),_p);
-              return  {
-                min: hit.sort[1],
-                max: hit.sort[1],
-                eventType: "annotation",
-                title: null,
-                description: "<small><i class='icon-tag icon-flip-vertical'></i> "+
-                  _h[$scope.panel.annotate.field]+"</small><br>"+
-                  moment(hit.sort[1]).format('YYYY-MM-DD HH:mm:ss'),
-                score: hit.sort[0]
+              $scope.legend[i] = {query:q,hits:hits};
+
+              data[i] = {
+                info: q,
+                time_series: time_series,
+                hits: hits,
+                counters: counters
               };
-            }));
-            // Sort the data
-            $scope.annotations = _.sortBy($scope.annotations, function(v){
-              // Sort in reverse
-              return v.score*($scope.panel.annotate.sort[1] === 'desc' ? -1 : 1);
+
+              i++;
             });
-            // And slice to the right size
-            $scope.annotations = $scope.annotations.slice(0,$scope.panel.annotate.size);
+
+            if($scope.panel.annotate.enable) {
+              $scope.annotations = $scope.annotations.concat(_.map(results.hits.hits, function(hit) {
+                var _p = _.omit(hit,'_source','sort','_score');
+                var _h = _.extend(kbn.flatten_json(hit._source),_p);
+                return  {
+                  min: hit.sort[1],
+                  max: hit.sort[1],
+                  eventType: "annotation",
+                  title: null,
+                  description: "<small><i class='icon-tag icon-flip-vertical'></i> "+
+                    _h[$scope.panel.annotate.field]+"</small><br>"+
+                    moment(hit.sort[1]).format('YYYY-MM-DD HH:mm:ss'),
+                  score: hit.sort[0]
+                };
+              }));
+              // Sort the data
+              $scope.annotations = _.sortBy($scope.annotations, function(v){
+                // Sort in reverse
+                return v.score*($scope.panel.annotate.sort[1] === 'desc' ? -1 : 1);
+              });
+              // And slice to the right size
+              $scope.annotations = $scope.annotations.slice(0,$scope.panel.annotate.size);
+            }
           }
-        }
 
-        // Tell the histogram directive to render.
-        $scope.$emit('render', data);
+          // Tell the histogram directive to render.
+          $scope.$emit('render', data);
 
-        // If we still have segments left, get them
-        if(segment < dashboard.indices.length-1) {
-          $scope.get_data(data,segment+1,query_id);
-        }
+          // If we still have segments left, get them
+          if(segment < dashboard.indices.length-1) {
+            $scope.get_data(data,segment+1,query_id);
+          }
+        });
       });
     };
 
@@ -770,7 +819,7 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
               group = '<small style="font-size:0.9em;">' +
                 '<i class="icon-circle" style="color:'+item.series.color+';"></i>' + ' ' +
                 (item.series.info.alias || item.series.info.query)+
-              '</small><br>';
+                '</small><br>';
             } else {
               group = kbn.query_color_dot(item.series.color, 15) + ' ';
             }
