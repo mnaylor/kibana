@@ -73,6 +73,10 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
        * defined. Possible values: count, mean, max, min, total.
        */
       mode          : 'count',
+      /** @scratch /panels/table/5
+       * sort:: An array describing the sort order of the table. For example [`@timestamp',`desc']
+       */
+      sort    : ['_score','desc'],
 
       size          : 10,
 
@@ -359,14 +363,16 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
         boolQuery = boolQuery.must(querySrv.toEjsObj(q));
       });
 
+      var sort = [$scope.ejs.Sort($scope.panel.sort[0])
+                  .order($scope.panel.sort[1]).ignoreUnmapped(true)];
+
       request = request.query(
         $scope.ejs.FilteredQuery(
           boolQuery,
-          filterSrv.getBoolFilter(filterSrv.ids())
+          //filterSrv.getBoolFilter(filterSrv.ids())
         ))
         .size($scope.panel.size)
-        .sort('rep')
-        .fields(['id1', 'id2']);
+        .sort(sort);
 
       // Populate scope when we have results
       results = request.doSearch();
@@ -379,9 +385,9 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
 
   	  // add a new query for each high ranking dupe bug
           _.each(results.hits.hits, function(h) {
-            var id = h.fields.id1[0];
+            var id = h._source.id1;
             if (bugid == id) {
-              id = h.fields.id2[0];
+              id = h._source.id2;
 	    };
 
             var newQuery = {

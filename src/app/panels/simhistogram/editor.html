@@ -55,4 +55,13 @@
       <input type="number" class="input-mini ng-pristine ng-valid ng-valid-number" ng-model="panel.size" ng-change='set_refresh(true)'>
     </div>
   </div>
+  <div class="section">
+    <h5>Sort</h5>
+    <div class="editor-option">
+        <label class="small">Sort</label>
+        <input class="input-small" bs-typeahead="fields.list" ng-model="panel.sort[0]" type="text" ng-change='set_refresh(true)'></input>
+        <i ng-click='set_refresh(true)' ng-class="{'icon-chevron-up': panel.sort[1] == 'asc','icon-chevron-down': panel.sort[1] == 'desc'}"></i>
+    </div>
+  </div>
+
 </div>
