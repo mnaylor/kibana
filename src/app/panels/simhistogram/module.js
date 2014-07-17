@@ -361,6 +361,7 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
           boolQuery,
           filterSrv.getBoolFilter(filterSrv.ids())
         ))
+        .sort('rep')
         .fields(['id1', 'id2'])
         .size(50);
 
@@ -368,24 +369,27 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
       results = request.doSearch();
 
       results.then(function(results) {
-        _.each(results.hits.hits, function(h) {
-          var id = h.fields.id1[0];
-          if (bugid == id) {
-            id = h.fields.id2[0];
-	  };
-	  // add a new query for each high ranking dupe bug
-          var newQuery = {
-            alias: id,
-            color: querySrv.colors[id % querySrv.colors.length],
-            enable: 'true',
-            pin: false,
-            id: id,
-            parent: id,
-            query: '_type: bug AND bugid: ' + id,
-            type: 'lucene' 
-	  };
-          queries.push(newQuery);
-	});
+        if (!_.isUndefined(bugid)) {
+  	    // add a new query for each high ranking dupe bug
+          _.each(results.hits.hits, function(h) {
+            var id = h.fields.id1[0];
+            if (bugid == id) {
+              id = h.fields.id2[0];
+	    };
+
+            var newQuery = {
+              alias: id,
+              color: querySrv.colors[id % querySrv.colors.length],
+              enable: 'true',
+              pin: false,
+              id: id,
+              parent: id,
+              query: '_type: bug AND bugid: ' + id,
+              type: 'lucene' 
+	    };
+            queries.push(newQuery);
+	  });
+        }
 
 	if (!$scope.panel.annotate.enable) {
           request.searchType("count");
