@@ -368,8 +368,7 @@ function (angular, app, $, _, kbn, moment, timeSeries, numeral) {
 
       request = request.query(
         $scope.ejs.FilteredQuery(
-          boolQuery,
-          //filterSrv.getBoolFilter(filterSrv.ids())
+          boolQuery
         ))
         .size($scope.panel.size)
         .sort(sort);
