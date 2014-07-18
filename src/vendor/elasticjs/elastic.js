@@ -8364,6 +8364,7 @@
 
     var
       params = {},
+      query = {},
       paramExcludes = ['upsert', 'source', 'script', 'lang', 'params'];
 
     return {
@@ -8786,8 +8787,29 @@
         } else {
           throw new TypeError('Argument must be string or array');
         }
+        
+        return this;
+      },
+
+      sourceFields: function (fields) {
+        if (query._source == null) {
+          query._source = {"include": []};
+        }
+
+        if (fields == null) {
+          return query._source.include;
+        }
+
+        if (isString(fields)) {
+          query._source.include.push(fields);
+        } else if (isArray(fields)) {
+          query._source.include = fields;
+        } else {
+          throw new TypeError('Argument must be string or array');
+        }
 
         return this;
+
       },
 
       /**
