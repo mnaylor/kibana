@@ -8791,6 +8791,21 @@
         return this;
       },
 
+      /**
+             <p>Sets the fields included in the return of _source.</p>
+
+             <p>By default the <code>_source</code> field is returned.  Pass a single value
+             to append to the current list of fields, pass an array to overwrite the current
+             list of fields.  The returned fields will either be loaded if they are stored,
+             or fetched from the <code>_source</code></p>
+
+             <p>This option is valid during the following operations:
+                <code>post</code> </p>
+
+             @member ejs.Document
+             @param {String || Array} fields a single field name or array of field names.
+             @returns {Object} returns <code>this</code> so that calls can be chained.
+             */
       sourceFields: function (fields) {
         if (query._source == null) {
           query._source = {"include": []};
@@ -19987,6 +20002,43 @@
 
         return this;
       },
+
+      /**
+             <p>Sets the fields included in the return of _source.</p>
+
+             <p>By default the <code>_source</code> field is returned.  Pass a single value
+             to append to the current list of fields, pass an array to overwrite the current
+             list of fields.  The returned fields will either be loaded if they are stored,
+             or fetched from the <code>_source</code></p>
+
+             <p>This option is valid during the following operations:
+                <code>post</code> </p>
+
+             @member ejs.Document
+             @param {String || Array} fields a single field name or array of field names.
+             @returns {Object} returns <code>this</code> so that calls can be chained.
+             */
+      sourceFields: function (fields) {
+        if (query._source == null) {
+          query._source = {"include": []};
+        }
+
+        if (fields == null) {
+          return query._source.include;
+        }
+
+        if (isString(fields)) {
+          query._source.include.push(fields);
+        } else if (isArray(fields)) {
+          query._source.include = fields;
+        } else {
+          throw new TypeError('Argument must be string or array');
+        }
+
+        return this;
+
+      },
+
 
       /**
             Once a query executes, you can use rescore to run a secondary, more
