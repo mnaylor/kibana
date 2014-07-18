@@ -355,7 +355,12 @@ function (angular, app, _, kbn, moment) {
           .postTags('@end-highlight@')
         )
         .size($scope.panel.size*$scope.panel.pages)
-        .sort(sort);
+        .sort(sort)
+        .sourceFields(["bugid", "title", "description", "openedDate", "mergeID",
+                       "priority", "status", "type", "component", "ngram1",
+                       "rep", "all", "user", "junk", "nfr", "lda", "architecture",
+                       "norep_all", "norep_user", "norep_junk", "norep_nfr",
+                       "norep_lda", "norep_architecture", "id1", "id2"]);
 
       $scope.populate_modal(request);
 
@@ -385,7 +390,7 @@ function (angular, app, _, kbn, moment) {
 
             var
               _h = _.clone(hit),
-              _p = _.omit(hit,'_source','sort','_score');
+              _p = _.omit(hit,'_source','sort','_score', '_id', '_type', '_index');
 
             // _source is kind of a lie here, never display it, only select values from it
             _h.kibana = {
