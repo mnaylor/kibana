@@ -335,11 +335,16 @@ function (angular, app, _, kbn, moment) {
 	}
       });
 
-      document = $scope.ejs.Document(dashboard.indices[0], 'bug', bugid);
+      document = $scope.ejs.Document(dashboard.indices[0], 'bug', bugid)
+        .sourceFields(["bugid", "title", "description", "openendDate", "mergeID",
+                       "priority", "status", "type", "component", "ngram1"]);
       console.log('performing more like this query on _id ' + bugid);
+
       //$scope.populate_modal(document);
 
-      document.doMlt().then(function(results) {
+      var results = document.doMlt();
+
+      results.then(function(results) {
         $scope.panelMeta.loading = false;
 
         if(_segment === 0) {
@@ -363,8 +368,8 @@ function (angular, app, _, kbn, moment) {
           $scope.data = $scope.data.concat(_.map(results.hits.hits, function(hit) {
 
             var
-              _h = _.clone(hit),
-              _p = _.omit(hit,'_source','sort','_score');
+              _h = _.clone(hit._source),
+              _p = _.omit(hit,'_source','sort', '_id', '_index', '_type');
 
             // _source is kind of a lie here, never display it, only select values from it
             _h.kibana = {

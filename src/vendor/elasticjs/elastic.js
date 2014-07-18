@@ -9041,10 +9041,8 @@
         // on get requests, just create the url and pass the client
         // params as the data
         var url = '/' + index + '/' + type + '/' + id + '/_mlt';
-
-        return ejs.client.get(url, genClientParams(params, paramExcludes),
-                                                          successcb, errorcb);
-      },	
+        return ejs.client.post(url, genClientParams(query, null), successcb, errorcb);
+      },
 
       /**
             <p>Stores a document in the given index and type.  If no id
