@@ -27,8 +27,9 @@ function (angular, app, _, kbn, moment) {
   var module = angular.module('kibana.panels.mlttable', []);
   app.useModule(module);
 
-  module.controller('mlttable', function($rootScope, $scope, $modal, $q, $compile, $timeout,
-    fields, querySrv, dashboard, filterSrv) {
+  module.controller('mlttable', function($rootScope, $scope, $modal, $q, 
+                                         $compile, $timeout, fields, 
+                                         querySrv, dashboard, filterSrv) {
     $scope.panelMeta = {
       modals : [
         {
@@ -83,6 +84,10 @@ function (angular, app, _, kbn, moment) {
        * fields:: the fields used a columns of the table, in an array.
        */
       fields  : [],
+      /** @scratch /panels/mlttable/5
+       * mltfield:: The fields on which to perform mlt query, in an array
+       */
+      mltfields : [],
       /** @scratch /panels/mlttable/5
        * highlight:: The fields on which to highlight, in an array
        */
@@ -155,6 +160,7 @@ function (angular, app, _, kbn, moment) {
       $scope.$on('refresh',function(){$scope.get_data();});
 
       $scope.fields = fields;
+      $scope.mltfields = fields;
       $scope.get_data();
     };
 
