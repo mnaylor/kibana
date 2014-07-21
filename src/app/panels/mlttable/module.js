@@ -349,7 +349,7 @@ function (angular, app, _, kbn, moment) {
       }
       console.log('performing more like this query on _id ' + bugid);
 
-      //$scope.populate_modal(document);
+      $scope.populate_modal(document, '_mlt', 'bug', bugid);
 
       var results = document.doMlt();
 
@@ -414,8 +414,15 @@ function (angular, app, _, kbn, moment) {
       });
     };
 
-    $scope.populate_modal = function(request) {
-      $scope.inspector = angular.toJson(request ,true);
+    $scope.populate_modal = function(request, api, type, id) {
+      $scope.api = api;
+      $scope.inspector = angular.toJson(request.toStringQuery(), true);
+      var paramStr = request.toStringParams();
+      if (paramStr !== '') {
+        $scope.params = paramStr + '&';
+      }
+      $scope.type = '/' + type;
+      $scope.id = '/' + id;
     };
 
     $scope.without_kibana = function (row) {

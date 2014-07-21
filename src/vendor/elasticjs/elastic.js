@@ -9014,6 +9014,14 @@
       toString: function () {
         return JSON.stringify(params);
       },
+      
+      toStringQuery: function () {
+        return query;
+      },
+
+      toStringParams: function () {
+        return genParamStr(params, paramExcludes)
+      },
 
       /**
             <p>The type of ejs object.  For internal use only.</p>
