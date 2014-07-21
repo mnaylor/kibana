@@ -344,6 +344,9 @@ function (angular, app, _, kbn, moment) {
       document = $scope.ejs.Document(dashboard.indices[0], 'bug', bugid)
         .sourceFields(["bugid", "title", "description", "openendDate", "mergeID",
                        "priority", "status", "type", "component", "ngram1"]);
+      if ($scope.panel.mltfields.length > 0) {
+        document = document.mltfields($scope.panel.mltfields);
+      }
       console.log('performing more like this query on _id ' + bugid);
 
       //$scope.populate_modal(document);

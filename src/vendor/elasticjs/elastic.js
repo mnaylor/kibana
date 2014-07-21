@@ -8791,6 +8791,27 @@
         return this;
       },
 
+      mltfields: function (fields) {
+        if (params.mlt_fields == null) {
+          params.mlt_fields = [];
+        }
+
+        if (fields == null) {
+          return params.mlt_fields;
+        }
+
+        if (isString(fields)) {
+          params.mlt_fields.push(fields);
+        } else if (isArray(fields)) {
+          params.mlt_fields = fields;
+        } else {
+          throw new TypeError('Argument must be string or array');
+        }
+        
+        return this;
+
+      },
+
       /**
              <p>Sets the fields included in the return of _source.</p>
 
@@ -9055,8 +9076,17 @@
         // we don't need to convert the client params to a string
         // on get requests, just create the url and pass the client
         // params as the data
-        var url = '/' + index + '/' + type + '/' + id + '/_mlt';
-        return ejs.client.post(url, genClientParams(query, null), successcb, errorcb);
+        var url = '/' + index + '/' + type + '/' + id + '/_mlt',
+        paramStr = genParamStr(params, paramExcludes);
+
+        if (paramStr !== '') {
+          url = url + '?' + paramStr;
+        }
+
+        //var url = '/' + index + '/' + type + '/' + id + '/_mlt';
+        var result =  ejs.client.post(url, genClientParams(query, null),
+                                      successcb, errorcb);
+        return result;
       },
 
       /**
